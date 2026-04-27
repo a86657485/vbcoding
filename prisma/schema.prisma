@@ -1,0 +1,32 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model ChatLog {
+  id            Int      @id @default(autoincrement())
+  studentName   String
+  studentClass  String   @default("未分班")
+  workTitle     String   @default("魔法作品")
+  prompt        String
+  generatedCode String
+  likes         Int      @default(0)
+  createdAt     DateTime @default(now())
+  reviews       Review[]
+}
+
+model Review {
+  id              Int      @id @default(autoincrement())
+  chatLogId       Int
+  reviewerName    String
+  promptScore     Int
+  functionScore   Int
+  experienceScore Int
+  comment         String   @default("")
+  createdAt       DateTime @default(now())
+  chatLog         ChatLog  @relation(fields: [chatLogId], references: [id], onDelete: Cascade)
+}
