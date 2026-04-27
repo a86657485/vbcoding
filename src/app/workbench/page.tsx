@@ -29,23 +29,43 @@ type Message = {
   content: string;
 };
 
-const templates = [
+type TemplateIdea = {
+  title: string;
+  prompt: string;
+  accent: string;
+};
+
+const accentOptions = [
+  "from-fuchsia-500 to-cyan-400",
+  "from-emerald-500 to-lime-300",
+  "from-sky-500 to-rose-300",
+  "from-violet-500 to-amber-300",
+  "from-amber-300 to-teal-400",
+];
+
+const fallbackTemplates: TemplateIdea[] = [
   {
-    title: "🎁 幸运盲盒机",
+    title: "✨ AI 现场灵感",
     prompt:
-      "帮我写一个纯HTML网页。\n\n【网页主题】：幸运盲盒机\n【目标用户】：小学四五年级学生\n【核心功能】：点击按钮后，随机抽取【语文免写券、一块糖果、当一天班长】\n【页面结构】：标题区、盲盒展示区、抽奖按钮、结果展示区\n【视觉风格】：【赛博朋克风】\n【背景颜色】：【黑色】\n【互动特效】：抽中结果时出现【满屏金币掉落动画】\n【限制要求】：必须是单文件 HTML，CSS 和 JS 都写在同一个文件里，不使用外部图片和外部库，用 Emoji 做装饰。",
+      "帮我写一个纯HTML网页。\n\n【网页主题】：创意灵感按钮\n【目标用户】：小学四五年级学生\n【核心功能】：点击按钮随机生成【未来发明、校园挑战、魔法任务】三个创意灵感\n【页面结构】：标题区、灵感卡片、生成按钮、收藏按钮\n【互动规则】：每次点击按钮都会切换新的灵感内容和 Emoji 装饰\n【视觉风格】：【未来实验室风】\n【互动特效】：出现【按钮发光、卡片翻转、星星粒子动画】\n【限制要求】：必须是单文件 HTML，CSS 和 JS 都写在同一个文件里，不使用外部图片和外部库，用 Emoji 做装饰。",
+    accent: "from-amber-300 to-cyan-400",
+  },
+  {
+    title: "📅 自律打卡墙",
+    prompt:
+      "帮我写一个纯HTML网页。\n\n【网页主题】：自律打卡墙\n【目标用户】：小学四五年级学生\n【核心功能】：记录【背单词、跳绳、阅读、整理书包】每日打卡\n【页面结构】：标题区、任务按钮、连续天数、鼓励语、打卡日历\n【互动规则】：点击任务后点亮当天格子，并显示鼓励语\n【视觉风格】：【清爽手账风】\n【互动特效】：打卡成功出现【印章盖下、彩带飘出、星星闪烁动画】\n【限制要求】：必须是单文件 HTML，CSS 和 JS 都写在同一个文件里，不使用外部图片和外部库，用 Emoji 做装饰。",
     accent: "from-fuchsia-500 to-cyan-400",
   },
   {
-    title: "🍅 魔法专注钟",
+    title: "🎨 头像制造机",
     prompt:
-      "帮我写一个纯HTML网页。\n\n【网页主题】：魔法专注钟\n【目标用户】：小学四五年级学生\n【核心功能】：制作一个【25分钟】倒计时器\n【页面结构】：标题区、倒计时数字区、开始按钮、暂停按钮、重置按钮\n【视觉风格】：【森林童话风】\n【互动规则】：点击开始后倒计时，点击暂停后停止，点击重置后恢复初始时间\n【结束特效】：倒计时结束时网页要【疯狂震动并飘落树叶】\n【限制要求】：必须是单文件 HTML，CSS 和 JS 都写在同一个文件里，不使用外部图片和外部库，用 Emoji 做装饰。",
+      "帮我写一个纯HTML网页。\n\n【网页主题】：头像制造机\n【目标用户】：小学四五年级学生\n【核心功能】：随机组合【表情、发型、配饰、背景色】生成专属 Emoji 头像\n【页面结构】：标题区、头像预览区、随机按钮、保存提示区\n【互动规则】：点击按钮后头像元素随机变化，并显示一句个性签名\n【视觉风格】：【潮流贴纸风】\n【互动特效】：切换时出现【贴纸弹跳、背景渐变、闪粉动画】\n【限制要求】：必须是单文件 HTML，CSS 和 JS 都写在同一个文件里，不使用外部图片和外部库，用 Emoji 做装饰。",
     accent: "from-emerald-500 to-lime-300",
   },
   {
-    title: "🎵 情绪疗愈站",
+    title: "🎲 今天吃什么",
     prompt:
-      "帮我写一个纯HTML网页。\n\n【网页主题】：情绪疗愈站\n【目标用户】：小学四五年级学生\n【核心功能】：页面上有三个情绪按钮，分别代表【下雨、篝火、海浪】\n【页面结构】：标题区、心情说明区、三个按钮、动画展示区\n【互动规则】：点击按钮后，页面背景变成对应颜色，并播放对应 Emoji 动画\n【视觉风格】：【极简治愈风】\n【声音替代】：不要播放真实音频，用文字和 Emoji 表达氛围\n【限制要求】：必须是单文件 HTML，CSS 和 JS 都写在同一个文件里，不使用外部图片和外部库。",
+      "帮我写一个纯HTML网页。\n\n【网页主题】：今天吃什么转盘\n【目标用户】：小学四五年级学生\n【核心功能】：点击按钮随机抽取【米饭、面条、汉堡、水果沙拉】等午餐灵感\n【页面结构】：标题区、转盘区、开始按钮、结果卡片、再来一次按钮\n【互动规则】：点击开始后转盘旋转，停止后显示结果和一句开心推荐语\n【视觉风格】：【可爱美食风】\n【互动特效】：抽中后出现【转盘旋转、食物 Emoji 飞出、彩色泡泡动画】\n【限制要求】：必须是单文件 HTML，CSS 和 JS 都写在同一个文件里，不使用外部图片和外部库，用 Emoji 做装饰。",
     accent: "from-sky-500 to-rose-300",
   },
   {
@@ -101,8 +121,10 @@ export default function WorkbenchPage() {
   const router = useRouter();
   const [studentName, setStudentName] = useState("");
   const [studentClass, setStudentClass] = useState("");
-  const [prompt, setPrompt] = useState(templates[0].prompt);
-  const [workTitle, setWorkTitle] = useState(templates[0].title);
+  const [templateIdeas, setTemplateIdeas] =
+    useState<TemplateIdea[]>(fallbackTemplates);
+  const [prompt, setPrompt] = useState(fallbackTemplates[0].prompt);
+  const [workTitle, setWorkTitle] = useState(fallbackTemplates[0].title);
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isGeneratingIdea, setIsGeneratingIdea] = useState(false);
@@ -131,6 +153,15 @@ export default function WorkbenchPage() {
     setStudentName(savedName);
     setStudentClass(savedClass);
   }, [router]);
+
+  useEffect(() => {
+    if (!studentName || !studentClass) {
+      return;
+    }
+
+    void generateLiveIdea();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [studentName, studentClass]);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({
@@ -206,7 +237,7 @@ export default function WorkbenchPage() {
   }
 
   function handleTemplateClick(templatePrompt: string) {
-    const template = templates.find((item) => item.prompt === templatePrompt);
+    const template = templateIdeas.find((item) => item.prompt === templatePrompt);
 
     if (template) {
       setWorkTitle(template.title);
@@ -255,7 +286,7 @@ export default function WorkbenchPage() {
     setIsGeneratingIdea(true);
 
     try {
-      const response = await fetch("/api/idea", {
+      const response = await fetch("/api/ideas", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -265,19 +296,25 @@ export default function WorkbenchPage() {
           studentClass,
         }),
       });
-      const idea = (await response.json()) as {
-        title?: string;
-        prompt?: string;
+      const data = (await response.json()) as {
+        ideas?: Array<{ title?: string; prompt?: string }>;
       };
+      const nextIdeas = (data.ideas?.length ? data.ideas : fallbackTemplates)
+        .slice(0, 5)
+        .map((idea, index) => ({
+          title: idea.title || fallbackTemplates[index]?.title || "✨ 创意选项",
+          prompt:
+            idea.prompt ||
+            fallbackTemplates[index]?.prompt ||
+            fallbackTemplates[0].prompt,
+          accent: accentOptions[index % accentOptions.length],
+        }));
+      const firstIdea = nextIdeas[0];
 
-      if (idea.title) {
-        setWorkTitle(idea.title);
-      }
-
-      if (idea.prompt) {
-        setPrompt(idea.prompt);
-        setIsPromptEditorExpanded(true);
-      }
+      setTemplateIdeas(nextIdeas);
+      setWorkTitle(firstIdea.title);
+      setPrompt(firstIdea.prompt);
+      setIsPromptEditorExpanded(true);
     } finally {
       setIsGeneratingIdea(false);
     }
@@ -454,9 +491,9 @@ export default function WorkbenchPage() {
                 ) : (
                   <Sparkles size={18} />
                 )}
-                AI 现场灵感
+                {isGeneratingIdea ? "生成中..." : "换一组灵感"}
               </button>
-              {templates.map((template) => (
+              {templateIdeas.map((template) => (
                 <button
                   key={template.title}
                   onClick={() => handleTemplateClick(template.prompt)}
