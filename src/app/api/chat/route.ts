@@ -1,13 +1,14 @@
 import { NextRequest } from "next/server";
+import {
+  DEEPSEEK_API_KEY,
+  DEEPSEEK_CHAT_COMPLETIONS_URL,
+  DEEPSEEK_MODEL,
+} from "@/lib/deepseek";
 import { extractHtmlCode } from "@/lib/html";
 import { prisma } from "@/lib/prisma";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-
-const DEEPSEEK_URL = "https://api.deepseek.com/chat/completions";
-const DEEPSEEK_MODEL = "deepseek-v4-pro";
-const DEEPSEEK_API_KEY = "sk-eb65e011c69a4e1cb667eecdfce990a8";
 
 const SYSTEM_PROMPT =
   "你是一个幽默的高级前端魔法师。请根据小学生的需求，输出一段完整的、单文件的纯 HTML 代码（必须包含所有的 CSS 样式和 JS 逻辑）。严禁使用任何外部图片链接，请全部用 Emoji 符号代替，严禁引入外部 CSS/JS 库。代码必须且只能包裹在 ```html 和 ``` 之间。";
@@ -56,7 +57,7 @@ export async function POST(request: NextRequest) {
   let deepseekResponse: Response;
 
   try {
-    deepseekResponse = await fetch(DEEPSEEK_URL, {
+    deepseekResponse = await fetch(DEEPSEEK_CHAT_COMPLETIONS_URL, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${DEEPSEEK_API_KEY}`,

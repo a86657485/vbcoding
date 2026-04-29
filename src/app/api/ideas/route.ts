@@ -1,11 +1,12 @@
 import { NextRequest } from "next/server";
+import {
+  DEEPSEEK_API_KEY,
+  DEEPSEEK_CHAT_COMPLETIONS_URL,
+  DEEPSEEK_MODEL,
+} from "@/lib/deepseek";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-
-const DEEPSEEK_URL = "https://api.deepseek.com/chat/completions";
-const DEEPSEEK_MODEL = "deepseek-v4-pro";
-const DEEPSEEK_API_KEY = "sk-eb65e011c69a4e1cb667eecdfce990a8";
 
 const fallbackIdeas = [
   {
@@ -73,7 +74,7 @@ export async function POST(request: NextRequest) {
   const seed = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
   try {
-    const response = await fetch(DEEPSEEK_URL, {
+    const response = await fetch(DEEPSEEK_CHAT_COMPLETIONS_URL, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${DEEPSEEK_API_KEY}`,

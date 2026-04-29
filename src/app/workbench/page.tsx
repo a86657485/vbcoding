@@ -3,7 +3,6 @@
 import {
   FormEvent,
   useEffect,
-  useMemo,
   useRef,
   useState,
 } from "react";
@@ -85,8 +84,23 @@ function extractHtmlCode(text: string) {
   return match?.[1]?.trim() ?? "";
 }
 
-function splitMagicTags(text: string) {
-  return text.split(/(【[^】]+】)/g).filter(Boolean);
+function deriveWorkTitle(prompt: string) {
+  const themeMatch = prompt.match(/【网页主题】[:：]?\s*([^\n。]+)/);
+
+  if (themeMatch?.[1]?.trim()) {
+    return themeMatch[1].trim().slice(0, 24);
+  }
+
+  const firstLine = prompt
+    .split("\n")
+    .map((line) => line.trim())
+    .find((line) => line && line !== "帮我写一个纯HTML网页。");
+
+  if (firstLine) {
+    return firstLine.replace(/^[-*]\s*/, "").slice(0, 24);
+  }
+
+  return "魔法作品";
 }
 
 const emptyPreview = `<!doctype html>
@@ -112,7 +126,7 @@ const emptyPreview = `<!doctype html>
   <main>
     <div class="emoji">🪄</div>
     <h1>魔法预览区待命中</h1>
-    <p>选择一张魔法卡片，替换高亮词，再点击发送。</p>
+    <p>选择一个案例模板，或者直接输入自己的提示词，再点击发送。</p>
   </main>
 </body>
 </html>`;
@@ -124,7 +138,7 @@ export default function WorkbenchPage() {
   const [templateIdeas, setTemplateIdeas] =
     useState<TemplateIdea[]>(fallbackTemplates);
   const [prompt, setPrompt] = useState(fallbackTemplates[0].prompt);
-  const [workTitle, setWorkTitle] = useState(fallbackTemplates[0].title);
+  const [workTitle, setWorkTitle] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isGeneratingIdea, setIsGeneratingIdea] = useState(false);
@@ -134,12 +148,10 @@ export default function WorkbenchPage() {
   const [chatHeight, setChatHeight] = useState(320);
   const [isPromptEditorExpanded, setIsPromptEditorExpanded] = useState(true);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const promptEditorRef = useRef<HTMLDivElement>(null);
+  const promptInputRef = useRef<HTMLTextAreaElement>(null);
   const resizeStartRef = useRef<{ y: number; height: number } | null>(null);
 
   const srcDoc = generatedCode || emptyPreview;
-
-  const promptPieces = useMemo(() => splitMagicTags(prompt), [prompt]);
 
   useEffect(() => {
     const savedName = window.localStorage.getItem("studentName");
@@ -176,79 +188,21 @@ export default function WorkbenchPage() {
     router.push("/");
   }
 
-  function replaceMagicTag(basePrompt: string, tag: string) {
-    const currentValue = tag.slice(1, -1);
-    const nextValue = window.prompt("替换这个魔法词：", currentValue);
-
-    if (!nextValue?.trim()) {
-      setPrompt(basePrompt);
-      return;
-    }
-
-    setPrompt(basePrompt.replace(tag, `【${nextValue.trim()}】`));
-    setIsPromptEditorExpanded(true);
-  }
-
-  function readPromptFromEditor() {
-    const root = promptEditorRef.current;
-
-    if (!root) {
-      return prompt;
-    }
-
-    function nodeToText(node: ChildNode): string {
-      if (node.nodeType === Node.TEXT_NODE) {
-        return node.textContent ?? "";
-      }
-
-      if (!(node instanceof HTMLElement)) {
-        return "";
-      }
-
-      if (node.tagName === "BR") {
-        return "\n";
-      }
-
-      if (node.dataset.magicValue === "true") {
-        return `【${node.textContent?.trim() ?? ""}】`;
-      }
-
-      const childText = Array.from(node.childNodes).map(nodeToText).join("");
-
-      if (node.tagName === "DIV" || node.tagName === "P") {
-        return childText.endsWith("\n") ? childText : `${childText}\n`;
-      }
-
-      return childText;
-    }
-
-    return Array.from(root.childNodes)
-      .map(nodeToText)
-      .join("")
-      .replace(/\n{3,}/g, "\n\n")
-      .trim();
-  }
-
-  function syncPromptFromEditor() {
-    const nextPrompt = readPromptFromEditor();
-
-    setPrompt(nextPrompt);
-    return nextPrompt;
+  function openSpaceInNewTab() {
+    const nextUrl = `/space?class=${encodeURIComponent(studentClass)}`;
+    window.open(nextUrl, "_blank", "noopener,noreferrer");
   }
 
   function handleTemplateClick(templatePrompt: string) {
-    const template = templateIdeas.find((item) => item.prompt === templatePrompt);
-
-    if (template) {
-      setWorkTitle(template.title);
-    }
-
     setPrompt(templatePrompt);
     setIsPromptEditorExpanded(true);
-  }
-
-  function handleCurrentTagClick(tag: string) {
-    replaceMagicTag(readPromptFromEditor(), tag);
+    window.requestAnimationFrame(() => {
+      promptInputRef.current?.focus();
+      promptInputRef.current?.setSelectionRange(
+        0,
+        promptInputRef.current.value.length,
+      );
+    });
   }
 
   function startResize(event: React.PointerEvent<HTMLDivElement>) {
@@ -312,7 +266,6 @@ export default function WorkbenchPage() {
       const firstIdea = nextIdeas[0];
 
       setTemplateIdeas(nextIdeas);
-      setWorkTitle(firstIdea.title);
       setPrompt(firstIdea.prompt);
       setIsPromptEditorExpanded(true);
     } finally {
@@ -322,17 +275,19 @@ export default function WorkbenchPage() {
 
   async function sendPrompt(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const currentPrompt = syncPromptFromEditor();
+    const currentPrompt = prompt.trim();
+    const currentWorkTitle = workTitle.trim() || deriveWorkTitle(currentPrompt);
 
-    if (isLoading || !currentPrompt.trim()) {
+    if (isLoading || !currentPrompt) {
       return;
     }
     setIsPromptEditorExpanded(false);
+    setWorkTitle(currentWorkTitle);
 
     const userMessage: Message = {
       id: createId(),
       role: "user",
-      content: currentPrompt.trim(),
+      content: currentPrompt,
     };
     const assistantId = createId();
     const assistantMessage: Message = {
@@ -355,8 +310,8 @@ export default function WorkbenchPage() {
         body: JSON.stringify({
           studentName,
           studentClass,
-          workTitle,
-          prompt: currentPrompt.trim(),
+          workTitle: currentWorkTitle,
+          prompt: currentPrompt,
           messages: previousMessages.map(({ role, content }) => ({
             role,
             content,
@@ -455,7 +410,7 @@ export default function WorkbenchPage() {
 
         <div className="flex items-center gap-3">
           <button
-            onClick={() => router.push(`/space?class=${studentClass}`)}
+            onClick={openSpaceInNewTab}
             className="hidden rounded-2xl bg-slate-950 px-4 py-2 text-sm font-black text-white transition hover:bg-indigo-700 sm:block"
           >
             进入体验空间
@@ -495,12 +450,12 @@ export default function WorkbenchPage() {
               </button>
               {templateIdeas.map((template) => (
                 <button
-                  key={template.title}
-                  onClick={() => handleTemplateClick(template.prompt)}
-                  className="relative h-12 min-w-[150px] overflow-hidden rounded-2xl border border-slate-200 bg-white px-4 text-left text-sm font-black shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
-                >
-                  <div
-                    className={`absolute inset-y-0 left-0 w-1.5 bg-gradient-to-b ${template.accent}`}
+                key={template.title}
+                onClick={() => handleTemplateClick(template.prompt)}
+                className="relative h-12 min-w-[150px] overflow-hidden rounded-2xl border border-slate-200 bg-white px-4 text-left text-sm font-black shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+              >
+                <div
+                  className={`absolute inset-y-0 left-0 w-1.5 bg-gradient-to-b ${template.accent}`}
                   />
                   {template.title}
                 </button>
@@ -515,7 +470,7 @@ export default function WorkbenchPage() {
           >
             {messages.length === 0 && (
               <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-5 text-center text-sm font-semibold text-slate-500">
-                选择一张魔法卡片，改几个高亮词，就能开始生成网页。
+                点一个案例模板直接写，或者自己输入完整提示词，都可以开始生成网页。
               </div>
             )}
 
@@ -579,46 +534,26 @@ export default function WorkbenchPage() {
           >
             <label className="mb-2 block">
               <span className="mb-1 block text-xs font-black text-slate-500">
-                作品名
+                作品名（可不填）
               </span>
               <input
                 value={workTitle}
                 onChange={(event) => setWorkTitle(event.target.value)}
                 className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-black outline-none transition focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
-                placeholder="给你的魔法作品起个名字"
+                placeholder="可以自己起名；不填会按你真正输入的提示词自动命名"
               />
             </label>
-            <div
-              ref={promptEditorRef}
-              role="textbox"
-              aria-multiline="true"
-              contentEditable
-              suppressContentEditableWarning
-              onBlur={syncPromptFromEditor}
-              className={`magic-scrollbar resize-y overflow-auto rounded-2xl border border-slate-200 bg-white p-3 text-sm font-semibold leading-6 outline-none transition focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100 ${
-                isPromptEditorExpanded ? "max-h-[420px] min-h-[220px]" : "h-32"
+            <textarea
+              ref={promptInputRef}
+              value={prompt}
+              onChange={(event) => setPrompt(event.target.value)}
+              className={`magic-scrollbar w-full resize-y overflow-auto rounded-2xl border border-slate-200 bg-white p-3 text-sm font-semibold leading-6 outline-none transition focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100 ${
+                isPromptEditorExpanded
+                  ? "max-h-[520px] min-h-[260px]"
+                  : "h-32 min-h-[128px]"
               }`}
-            >
-              {promptPieces.map((piece, index) =>
-                piece.startsWith("【") ? (
-                  <button
-                    key={`${piece}-${index}`}
-                    type="button"
-                    contentEditable={false}
-                    data-magic-value="true"
-                    onClick={() => handleCurrentTagClick(piece)}
-                    className="mx-0.5 inline-flex rounded-md border-b-2 border-indigo-500 bg-indigo-50 px-1.5 py-0.5 font-black text-indigo-700 transition hover:bg-indigo-100 hover:text-indigo-900"
-                    title="点击修改"
-                  >
-                    {piece.slice(1, -1)}
-                  </button>
-                ) : (
-                  <span key={`${piece}-${index}`} className="whitespace-pre-wrap">
-                    {piece}
-                  </span>
-                ),
-              )}
-            </div>
+              placeholder="可以直接输入自己的完整提示词，也可以先点上面的案例模板再修改。"
+            />
             <button
               disabled={isLoading || !prompt.trim()}
               className="mt-2 flex w-full items-center justify-center gap-2 rounded-2xl bg-slate-950 px-4 py-3 font-black text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:bg-slate-300"
@@ -632,7 +567,7 @@ export default function WorkbenchPage() {
             </button>
             <button
               type="button"
-              onClick={() => router.push(`/space?class=${studentClass}`)}
+              onClick={openSpaceInNewTab}
               className="mt-2 flex w-full items-center justify-center rounded-2xl border border-indigo-100 bg-indigo-50 px-4 py-3 text-sm font-black text-indigo-700 transition hover:bg-indigo-100 sm:hidden"
             >
               进入体验空间
